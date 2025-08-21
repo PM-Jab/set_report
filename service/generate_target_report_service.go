@@ -9,7 +9,7 @@ import (
 )
 
 type Service interface {
-	GenerateSET100ReportWithTarget(ctx context.Context, req entity.GenerateSET100ReportWithTargetReq) (*entity.GenerateSET100ReportWithTargetResp, error)
+	GenerateSETReportWithTarget(ctx context.Context, req entity.GenerateSET100ReportWithTargetReq) (*entity.GenerateSET100ReportWithTargetResp, error)
 }
 
 func NewService(cfg config.AppConfig, client *http.Client, adapter adapter.SetAdapter) Service {
@@ -27,7 +27,7 @@ type service struct {
 }
 
 // GetEodPriceBySymbol implements Service.
-func (s *service) GenerateSET100ReportWithTarget(ctx context.Context, req entity.GenerateSET100ReportWithTargetReq) (*entity.GenerateSET100ReportWithTargetResp, error) {
+func (s *service) GenerateSETReportWithTarget(ctx context.Context, req entity.GenerateSET100ReportWithTargetReq) (*entity.GenerateSET100ReportWithTargetResp, error) {
 
 	var targetReportData []entity.GenerateSET100ReportWithTargetRespData
 	var low, high, target float64
@@ -87,6 +87,10 @@ func (s *service) GenerateSET100ReportWithTarget(ctx context.Context, req entity
 		Message: "success",
 		Data:    targetReportData,
 	}, nil
+}
+
+func (s *service) GetAllSymbols(ctx context.Context) ([]string, error) {
+	return s.adapter.GetAllSymbols(ctx)
 }
 
 func IsPriceInToleranceRange(price, targetPrice, tolerance float64) bool {

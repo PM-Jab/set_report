@@ -46,3 +46,23 @@ func BuildGetEodPriceBySymbolReq(symbol, startDate, endDate, adjustedPriceFlag s
 		AdjustedPriceFlag: adjustedPriceFlag,
 	}
 }
+
+type GetEodPriceBySecurityTypeReq struct {
+	SecurityType      string `json:"securityType"`
+	Date              string `json:"date"`
+	AdjustedPriceFlag string `json:"adjustedPriceFlag"`
+}
+
+type GetEodPriceBySecurityTypeResp struct {
+	Code     int                `json:"code"`
+	Message  string             `json:"message"`
+	Response []EodPriceBySymbol `json:"response"`
+}
+
+func BuildGetPriceBySecurityTypeReq(securityType, date, adjustedPriceFlag string) GetEodPriceBySecurityTypeReq {
+	return GetEodPriceBySecurityTypeReq{
+		SecurityType:      securityType,
+		Date:              date,
+		AdjustedPriceFlag: adjustedPriceFlag,
+	}
+}

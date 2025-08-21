@@ -43,3 +43,22 @@ func (s *setAdapter) GetEodPriceBySymbol(ctx context.Context, req entity.GetEodP
 
 	return resp.Response, nil
 }
+
+func (s *setAdapter) GetEodPriceBySecurityType(ctx context.Context, req entity.GetEodPriceBySecurityTypeReq) ([]entity.EodPriceBySymbol, error) {
+	url := s.cfg.GetEodPriceBySecurityTypeURL + "?securityType=" + req.SecurityType + "&date=" + req.Date + "&adjustedPriceFlag=" + req.AdjustedPriceFlag
+	resp, err := httpclient.Get[[]entity.EodPriceBySymbol](ctx, s.client, url, &s.cfg.SetApiKey, nil)
+
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.Code != http.StatusOK {
+		return nil, err
+	}
+
+	if resp.Response == nil {
+		return nil, errors.New("no data found")
+	}
+
+	return resp.Response, nil
+}

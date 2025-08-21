@@ -27,7 +27,7 @@ func (h *Handler) GenerateTargetReport(c *gin.Context) {
 	}
 	fmt.Println("Starting to generate target report with body:", body)
 
-	resp, err := h.svc.GenerateSET100ReportWithTarget(ctx, body)
+	resp, err := h.svc.GenerateSETReportWithTarget(ctx, body)
 	if err != nil {
 		c.JSON(500, gin.H{"error": "Failed to generate report", "details": err.Error()})
 		return
