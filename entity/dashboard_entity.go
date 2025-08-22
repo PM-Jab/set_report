@@ -19,7 +19,24 @@ type GenerateSET100ReportWithTargetRespData struct {
 }
 
 type GenerateSET100ReportWithTargetResp struct {
-	Code    int                                      `json:"code"`
+	Code    string                                   `json:"code"`
 	Message string                                   `json:"message"`
 	Data    []GenerateSET100ReportWithTargetRespData `json:"data"`
+}
+
+type SetTopGainerReq struct {
+	SecurityType string `json:"securityType"` // e.g., "SET"
+	Limit        int    `json:"limit"`        // Number of top gainers to return
+}
+
+type SetTopData struct {
+	Symbol string  `json:"symbol"`
+	Price  float64 `json:"price"`
+	Change float64 `json:"change"`
+}
+
+type SetTopGainerResp struct {
+	Code    string       `json:"code"`
+	Message string       `json:"message"`
+	Data    []SetTopData `json:"data"`
 }

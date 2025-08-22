@@ -59,7 +59,7 @@ type GetEodPriceBySecurityTypeResp struct {
 	Response []EodPriceBySymbol `json:"response"`
 }
 
-func BuildGetPriceBySecurityTypeReq(securityType, date, adjustedPriceFlag string) GetEodPriceBySecurityTypeReq {
+func BuildGetEodPriceBySecurityTypeReq(securityType, date, adjustedPriceFlag string) GetEodPriceBySecurityTypeReq {
 	return GetEodPriceBySecurityTypeReq{
 		SecurityType:      securityType,
 		Date:              date,

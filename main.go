@@ -26,6 +26,7 @@ func main() {
 
 	// Define your routes here
 	router.POST("/set-report", h.GenerateTargetReport)
+	router.POST("/set-top-gainer", h.SetTopGainer)
 
 	if err := router.Run(":" + os.Getenv("PORT")); err != nil {
 		slog.Error("Failed to start server", slog.String("error", err.Error()))

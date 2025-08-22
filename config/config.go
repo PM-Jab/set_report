@@ -8,8 +8,9 @@ import (
 )
 
 type AppConfig struct {
-	GetEodPriceBySymbolURL string `env:"GET_EOD_PRICE_BY_SYMBOL_URL"`
-	SetApiKey              string `env:"SET_API_KEY"`
+	GetEodPriceBySymbolURL       string `env:"GET_EOD_PRICE_BY_SYMBOL_URL"`
+	GetEodPriceBySecurityTypeURL string `env:"GET_EOD_PRICE_BY_SECURITY_TYPE_URL"`
+	SetApiKey                    string `env:"SET_API_KEY"`
 }
 
 func C() AppConfig {

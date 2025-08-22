@@ -34,3 +34,21 @@ func (h *Handler) GenerateTargetReport(c *gin.Context) {
 	}
 	c.JSON(200, resp)
 }
+
+func (h *Handler) SetTopGainer(c *gin.Context) {
+	ctx := c.Request.Context()
+	var body entity.SetTopGainerReq
+	if err := c.ShouldBindJSON(&body); err != nil {
+		c.JSON(400, gin.H{"error": "Invalid request body"})
+		return
+	}
+	fmt.Println("Starting to get top gainers with body:", body)
+
+	resp, err := h.svc.SetTopGainerByDay(ctx, body)
+	if err != nil {
+		c.JSON(500, gin.H{"error": "Failed to get top gainers", "details": err.Error()})
+		return
+	}
+	c.JSON(200, resp)
+
+}

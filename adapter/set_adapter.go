@@ -3,6 +3,7 @@ package adapter
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"set-report/config"
 	"set-report/entity"
@@ -11,6 +12,7 @@ import (
 
 type SetAdapter interface {
 	GetEodPriceBySymbol(ctx context.Context, req entity.GetEodPriceBySymbolReq) ([]entity.EodPriceBySymbol, error)
+	GetEodPriceBySecurityType(ctx context.Context, req entity.GetEodPriceBySecurityTypeReq) ([]entity.EodPriceBySymbol, error)
 }
 
 func NewSetAdapter(cfg config.AppConfig, client *http.Client) SetAdapter {
@@ -46,6 +48,7 @@ func (s *setAdapter) GetEodPriceBySymbol(ctx context.Context, req entity.GetEodP
 
 func (s *setAdapter) GetEodPriceBySecurityType(ctx context.Context, req entity.GetEodPriceBySecurityTypeReq) ([]entity.EodPriceBySymbol, error) {
 	url := s.cfg.GetEodPriceBySecurityTypeURL + "?securityType=" + req.SecurityType + "&date=" + req.Date + "&adjustedPriceFlag=" + req.AdjustedPriceFlag
+	fmt.Println("Fetching EOD prices by security type with URL:", url)
 	resp, err := httpclient.Get[[]entity.EodPriceBySymbol](ctx, s.client, url, &s.cfg.SetApiKey, nil)
 
 	if err != nil {

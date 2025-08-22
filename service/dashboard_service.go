@@ -2,14 +2,18 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"set-report/adapter"
 	"set-report/config"
 	"set-report/entity"
+	"sort"
+	"time"
 )
 
 type Service interface {
 	GenerateSETReportWithTarget(ctx context.Context, req entity.GenerateSET100ReportWithTargetReq) (*entity.GenerateSET100ReportWithTargetResp, error)
+	SetTopGainerByDay(ctx context.Context, req entity.SetTopGainerReq) (*entity.SetTopGainerResp, error)
 }
 
 func NewService(cfg config.AppConfig, client *http.Client, adapter adapter.SetAdapter) Service {
@@ -83,14 +87,10 @@ func (s *service) GenerateSETReportWithTarget(ctx context.Context, req entity.Ge
 	}
 
 	return &entity.GenerateSET100ReportWithTargetResp{
-		Code:    0,
+		Code:    "0000",
 		Message: "success",
 		Data:    targetReportData,
 	}, nil
-}
-
-func (s *service) GetAllSymbols(ctx context.Context) ([]string, error) {
-	return s.adapter.GetAllSymbols(ctx)
 }
 
 func IsPriceInToleranceRange(price, targetPrice, tolerance float64) bool {
@@ -98,4 +98,47 @@ func IsPriceInToleranceRange(price, targetPrice, tolerance float64) bool {
 		return false
 	}
 	return true
+}
+
+func (s *service) SetTopGainerByDay(ctx context.Context, req entity.SetTopGainerReq) (*entity.SetTopGainerResp, error) {
+	yesterday := time.Now().AddDate(0, 0, -3).Format("2006-01-02")
+	fmt.Println("T-1 date: ", yesterday)
+	yesterdayEodPriceReq := entity.BuildGetEodPriceBySecurityTypeReq(req.SecurityType, yesterday, "Y")
+	reportEODT1, err := s.adapter.GetEodPriceBySecurityType(ctx, yesterdayEodPriceReq)
+	if err != nil {
+		return nil, err
+	}
+	fmt.Println("T-1 report lens: ", len(reportEODT1))
+	now := time.Now().AddDate(0, 0, -2).Format("2006-01-02")
+	fmt.Println("T date: ", now)
+	todayEodPriceReq := entity.BuildGetEodPriceBySecurityTypeReq(req.SecurityType, now, "Y")
+	reportEODT, err := s.adapter.GetEodPriceBySecurityType(ctx, todayEodPriceReq)
+	if err != nil {
+		return nil, err
+	}
+	fmt.Println("T report lens: ", len(reportEODT))
+	var gainer []entity.SetTopData
+	for index, t1 := range reportEODT1 {
+		if t1.Close == 0 {
+			continue
+		}
+		if t1.Close < reportEODT[index].Close {
+			gainer = append(gainer, entity.SetTopData{
+				Symbol: t1.Symbol,
+				Price:  reportEODT[index].Close,
+				Change: reportEODT[index].Close/t1.Close - 1,
+			})
+		}
+	}
+
+	// sort by change
+	sort.Slice(gainer, func(i, j int) bool {
+		return gainer[i].Change > gainer[j].Change
+	})
+
+	return &entity.SetTopGainerResp{
+		Code:    "0000",
+		Message: "success",
+		Data:    gainer, // Limit the number of top gainers
+	}, nil
 }
