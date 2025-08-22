@@ -14,6 +14,7 @@ import (
 type Service interface {
 	GenerateSETReportWithTarget(ctx context.Context, req entity.GenerateSET100ReportWithTargetReq) (*entity.GenerateSET100ReportWithTargetResp, error)
 	SetTopGainerByDay(ctx context.Context, req entity.SetTopGainerReq) (*entity.SetTopGainerResp, error)
+	SetTopLoserByDay(ctx context.Context, req entity.SetTopLoserReq) (*entity.SetTopLoserResp, error)
 }
 
 func NewService(cfg config.AppConfig, client *http.Client, adapter adapter.SetAdapter) Service {
@@ -101,22 +102,37 @@ func IsPriceInToleranceRange(price, targetPrice, tolerance float64) bool {
 }
 
 func (s *service) SetTopGainerByDay(ctx context.Context, req entity.SetTopGainerReq) (*entity.SetTopGainerResp, error) {
-	yesterday := time.Now().AddDate(0, 0, -3).Format("2006-01-02")
-	fmt.Println("T-1 date: ", yesterday)
-	yesterdayEodPriceReq := entity.BuildGetEodPriceBySecurityTypeReq(req.SecurityType, yesterday, "Y")
-	reportEODT1, err := s.adapter.GetEodPriceBySecurityType(ctx, yesterdayEodPriceReq)
-	if err != nil {
-		return nil, err
+	t_1 := 0
+	var reportEODT, reportEODT1 []entity.EodPriceBySymbol
+	var tDate, t1Date string
+
+	for {
+		t := time.Now().AddDate(0, 0, -t_1).Format("2006-01-02")
+		todayEodPriceReq := entity.BuildGetEodPriceBySecurityTypeReq(req.SecurityType, t, "Y")
+		reportEOD, err := s.adapter.GetEodPriceBySecurityType(ctx, todayEodPriceReq)
+		if err != nil {
+			return nil, err
+		}
+
+		if len(reportEOD) > 0 {
+			if reportEODT == nil {
+				reportEODT = reportEOD
+				tDate = t
+			} else {
+				reportEODT1 = reportEOD
+				t1Date = t
+				break
+			}
+		}
+
+		t_1++
+
+		if t_1 > 10 {
+			fmt.Println("No more data found")
+			return &entity.SetTopGainerResp{}, nil
+		}
 	}
-	fmt.Println("T-1 report lens: ", len(reportEODT1))
-	now := time.Now().AddDate(0, 0, -2).Format("2006-01-02")
-	fmt.Println("T date: ", now)
-	todayEodPriceReq := entity.BuildGetEodPriceBySecurityTypeReq(req.SecurityType, now, "Y")
-	reportEODT, err := s.adapter.GetEodPriceBySecurityType(ctx, todayEodPriceReq)
-	if err != nil {
-		return nil, err
-	}
-	fmt.Println("T report lens: ", len(reportEODT))
+
 	var gainer []entity.SetTopData
 	for index, t1 := range reportEODT1 {
 		if t1.Close == 0 {
@@ -136,9 +152,97 @@ func (s *service) SetTopGainerByDay(ctx context.Context, req entity.SetTopGainer
 		return gainer[i].Change > gainer[j].Change
 	})
 
+	var filteredGainers []entity.SetTopData
+	for _, g := range gainer {
+		if g.Price >= 1 {
+			filteredGainers = append(filteredGainers, g)
+		}
+
+		if filteredGainers != nil && len(filteredGainers) >= req.Limit || g.Change*100 < 5 {
+			break
+		}
+	}
+
 	return &entity.SetTopGainerResp{
 		Code:    "0000",
 		Message: "success",
-		Data:    gainer, // Limit the number of top gainers
+		Data: entity.SetTopGainerRespData{
+			TDate:     tDate,
+			T1Date:    t1Date,
+			TopGainer: filteredGainers,
+		},
+	}, nil
+}
+
+func (s *service) SetTopLoserByDay(ctx context.Context, req entity.SetTopLoserReq) (*entity.SetTopLoserResp, error) {
+	t_1 := 0
+	var reportEODT, reportEODT1 []entity.EodPriceBySymbol
+	var tDate, t1Date string
+
+	for {
+		t := time.Now().AddDate(0, 0, -t_1).Format("2006-01-02")
+		todayEodPriceReq := entity.BuildGetEodPriceBySecurityTypeReq(req.SecurityType, t, "Y")
+		reportEOD, err := s.adapter.GetEodPriceBySecurityType(ctx, todayEodPriceReq)
+		if err != nil {
+			return nil, err
+		}
+
+		if len(reportEOD) > 0 {
+			if reportEODT == nil {
+				reportEODT = reportEOD
+				tDate = t
+			} else {
+				reportEODT1 = reportEOD
+				t1Date = t
+				break
+			}
+		}
+
+		t_1++
+
+		if t_1 > 10 {
+			fmt.Println("No more data found")
+			return &entity.SetTopLoserResp{}, nil
+		}
+	}
+
+	var loser []entity.SetTopData
+	for index, t1 := range reportEODT1 {
+		if t1.Close == 0 {
+			continue
+		}
+		if t1.Close > reportEODT[index].Close {
+			loser = append(loser, entity.SetTopData{
+				Symbol: t1.Symbol,
+				Price:  reportEODT[index].Close,
+				Change: 1 - reportEODT[index].Close/t1.Close,
+			})
+		}
+	}
+
+	// sort by change
+	sort.Slice(loser, func(i, j int) bool {
+		return loser[i].Change > loser[j].Change
+	})
+
+	var filteredLosers []entity.SetTopData
+	for _, l := range loser {
+		if l.Price >= 1 {
+			filteredLosers = append(filteredLosers, l)
+		}
+
+		if filteredLosers != nil && len(filteredLosers) >= req.Limit || l.Change*100 < 5 {
+			break
+		}
+	}
+
+	return &entity.SetTopLoserResp{
+		Code:    "0000",
+		Message: "success",
+		Data: entity.SetTopLoserRespData{
+			TDate:    tDate,
+			T1Date:   t1Date,
+			TopLoser: filteredLosers,
+		},
 	}, nil
 }

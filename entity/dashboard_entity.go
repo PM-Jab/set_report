@@ -35,8 +35,31 @@ type SetTopData struct {
 	Change float64 `json:"change"`
 }
 
+type SetTopGainerRespData struct {
+	TDate     string       `json:"tDate"`
+	T1Date    string       `json:"t1Date"`
+	TopGainer []SetTopData `json:"topGainer"`
+}
+
+type SetTopLoserReq struct {
+	SecurityType string `json:"securityType"` // e.g., "SET"
+	Limit        int    `json:"limit"`        // Number of top losers to return
+}
+
 type SetTopGainerResp struct {
-	Code    string       `json:"code"`
-	Message string       `json:"message"`
-	Data    []SetTopData `json:"data"`
+	Code    string               `json:"code"`
+	Message string               `json:"message"`
+	Data    SetTopGainerRespData `json:"data"`
+}
+
+type SetTopLoserRespData struct {
+	TDate    string       `json:"tDate"`
+	T1Date   string       `json:"t1Date"`
+	TopLoser []SetTopData `json:"topLoser"`
+}
+
+type SetTopLoserResp struct {
+	Code    string              `json:"code"`
+	Message string              `json:"message"`
+	Data    SetTopLoserRespData `json:"data"`
 }
