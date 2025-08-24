@@ -10,6 +10,7 @@ import (
 
 	"set-report/config"
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 )
 
@@ -23,6 +24,8 @@ func main() {
 	router := gin.New()
 	router.Use(gin.Logger())
 	router.Use(gin.Recovery())
+
+	router.Use(cors.Default())
 
 	// Define your routes here
 	router.POST("/set-report", h.GenerateTargetReport)

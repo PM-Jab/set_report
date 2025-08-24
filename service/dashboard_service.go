@@ -35,8 +35,6 @@ type service struct {
 func (s *service) GenerateSETReportWithTarget(ctx context.Context, req entity.GenerateSET100ReportWithTargetReq) (*entity.GenerateSET100ReportWithTargetResp, error) {
 
 	var targetReportData []entity.GenerateSET100ReportWithTargetRespData
-	var low, high, target float64
-	var lowDate, highDate, latestTargetDate string
 
 	for _, symbol := range req.Symbols {
 		eodPriceReq := entity.BuildGetEodPriceBySymbolReq(symbol, req.StartDate, req.EndDate, "Y")
@@ -49,27 +47,31 @@ func (s *service) GenerateSETReportWithTarget(ctx context.Context, req entity.Ge
 			continue
 		}
 
-		low = eodPrices[0].Low
-		high = eodPrices[0].High
-		lowDate = eodPrices[0].Date
-		highDate = eodPrices[0].Date
+		low := eodPrices[0].Low
+		high := eodPrices[0].High
+		lowDate := eodPrices[0].Date
+		highDate := eodPrices[0].Date
 
 		for _, dayReport := range eodPrices {
-			if low == 0 || dayReport.Low < low {
-				low = dayReport.Close
+			if dayReport.Low < low {
+				low = dayReport.Low
 				lowDate = dayReport.Date
 			}
-			if high == 0 || dayReport.High > high {
-				high = dayReport.Close
+			if dayReport.High > high {
+				high = dayReport.High
 				highDate = dayReport.Date
 			}
 		}
 
-		target = high * req.TargetPercentage / 100
+		target := high * req.TargetPercentage / 100
+		latestTargetDate := "" // Reset for next symbol
 
-		for _, dayReport := range eodPrices {
+		// Find the latest date where Close is in tolerance range (iterate in reverse)
+		for i := len(eodPrices) - 1; i >= 0; i-- {
+			dayReport := eodPrices[i]
 			if IsPriceInToleranceRange(dayReport.Close, target, req.RangeOfTolerance) {
 				latestTargetDate = dayReport.Date
+				break
 			}
 		}
 
@@ -82,9 +84,6 @@ func (s *service) GenerateSETReportWithTarget(ctx context.Context, req entity.Ge
 			Target:           target,
 			LatestTargetDate: latestTargetDate,
 		})
-
-		latestTargetDate = "" // Reset for next symbol
-
 	}
 
 	return &entity.GenerateSET100ReportWithTargetResp{
