@@ -66,3 +66,61 @@ func BuildGetEodPriceBySecurityTypeReq(securityType, date, adjustedPriceFlag str
 		AdjustedPriceFlag: adjustedPriceFlag,
 	}
 }
+
+type GetFinancialDataBySymbolReq struct {
+	Symbol       string `json:"symbol"`
+	StartYear    string `json:"startYear"`
+	StartQuarter string `json:"startQuarter"`
+	EndYear      string `json:"endYear"`
+	EndQuarter   string `json:"endQuarter"`
+}
+
+type SetFinancialData struct {
+	Symbol                 string  `json:"symbol"`
+	Year                   string  `json:"year"`
+	Quarter                string  `json:"quarter"`
+	FinancialStatementType string  `json:"financialStatementType"`
+	DateAsof               string  `json:"dateAsof"`
+	AccountPeriod          string  `json:"accountPeriod"`
+	TotalAssets            float64 `json:"totalAssets"`
+	TotalLiabilities       float64 `json:"totalLiabilities"`
+	PaidupShareCapital     float64 `json:"paidupShareCapital"`
+	ShareholderEquity      float64 `json:"shareholderEquity"`
+	TotalEquity            float64 `json:"totalEquity"`
+	TotalRevenueQuarter    float64 `json:"totalRevenueQuarter"`
+	TotalRevenueAccum      float64 `json:"totalRevenueAccum"`
+	TotalExpensesQuarter   float64 `json:"totalExpensesQuarter"`
+	TotalExpensesAccum     float64 `json:"totalExpensesAccum"`
+	EbitQuarter            float64 `json:"ebitQuarter"`
+	EbitAccum              float64 `json:"ebitAccum"`
+	NetProfitQuarter       float64 `json:"netProfitQuarter"`
+	NetProfitAccum         float64 `json:"netProfitAccum"`
+	EpsQuarter             float64 `json:"epsQuarter"`
+	EpsAccum               float64 `json:"epsAccum"`
+	OperatingCashFlow      float64 `json:"operatingCashFlow"`
+	InvestingCashFlow      float64 `json:"investingCashFlow"`
+	FinancingCashFlow      float64 `json:"financingCashFlow"`
+	Roe                    float64 `json:"roe"`
+	Roa                    float64 `json:"roa"`
+	NetProfitMarginQuarter float64 `json:"netProfitMarginQuarter"`
+	NetProfitMarginAccum   float64 `json:"netProfitMarginAccum"`
+	De                     float64 `json:"de"`
+	FixedAssetTurnover     float64 `json:"fixedAssetTurnover"`
+	TotalAssetTurnover     float64 `json:"totalAssetTurnover"`
+}
+
+type GetFinancialDataBySymbolResp struct {
+	Code     int                `json:"code"`
+	Message  string             `json:"message"`
+	Response []SetFinancialData `json:"response"`
+}
+
+func BuildGetFinancialDataBySymbolReq(symbol, startYear, startQuarter, endYear, endQuarter string) GetFinancialDataBySymbolReq {
+	return GetFinancialDataBySymbolReq{
+		Symbol:       symbol,
+		StartYear:    startYear,
+		StartQuarter: startQuarter,
+		EndYear:      endYear,
+		EndQuarter:   endQuarter,
+	}
+}

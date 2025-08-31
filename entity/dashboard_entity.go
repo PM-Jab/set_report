@@ -1,14 +1,27 @@
 package entity
 
-type GenerateSET100ReportWithTargetReq struct {
+type GenerateTargetReportWithTargetBySymbolReq struct {
 	StartDate        string   `json:"startDate"`
 	EndDate          string   `json:"endDate"`
 	Symbols          []string `json:"symbols"`
 	TargetPercentage float64  `json:"targetPercentage"` // 21.1
-	RangeOfTolerance float64  `json:"rangeOfTolerance"`
 }
 
-type GenerateSET100ReportWithTargetRespData struct {
+type GenerateTargetReportWithTargetAllSymbolReq struct {
+	StartDate        string  `json:"startDate"`
+	EndDate          string  `json:"endDate"`
+	TargetPercentage float64 `json:"targetPercentage"` // 21.1
+}
+
+type GenerateTargetReportWithTargetAllSymbolWithLimitReq struct {
+	StartDate        string  `json:"startDate"`
+	EndDate          string  `json:"endDate"`
+	TargetPercentage float64 `json:"targetPercentage"` // 21.1
+	Limit            int     `json:"limit"`            // Limit for the number of symbols
+	Page             int     `json:"page"`             // Page number for pagination
+}
+
+type TargetReportData struct {
 	Symbol           string  `json:"symbol"`
 	Low              float64 `json:"low"`
 	LowDate          string  `json:"lowDate"`
@@ -16,12 +29,27 @@ type GenerateSET100ReportWithTargetRespData struct {
 	HighDate         string  `json:"highDate"`
 	Target           float64 `json:"target"`
 	LatestTargetDate string  `json:"latestTargetDate"`
+	CurrentPrice     float64 `json:"currentPrice"`
 }
 
-type GenerateSET100ReportWithTargetResp struct {
-	Code    string                                   `json:"code"`
-	Message string                                   `json:"message"`
-	Data    []GenerateSET100ReportWithTargetRespData `json:"data"`
+type GenerateSETReportWithTargetResp struct {
+	Code    string             `json:"code"`
+	Message string             `json:"message"`
+	Data    []TargetReportData `json:"data"`
+}
+
+type GenerateSETReportWithTargetWithLimitRespData struct {
+	TargetReport []TargetReportData `json:"targetReport"`
+	Page         int                `json:"page"`
+	Limit        int                `json:"limit"`
+	TotalPages   int                `json:"totalPages"`
+	TotalItems   int                `json:"totalItems"`
+}
+
+type GenerateSETReportWithTargetWithLimitResp struct {
+	Code    string                                       `json:"code"`
+	Message string                                       `json:"message"`
+	Data    GenerateSETReportWithTargetWithLimitRespData `json:"data"`
 }
 
 type SetTopGainerReq struct {

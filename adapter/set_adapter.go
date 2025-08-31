@@ -13,6 +13,7 @@ import (
 type SetAdapter interface {
 	GetEodPriceBySymbol(ctx context.Context, req entity.GetEodPriceBySymbolReq) ([]entity.EodPriceBySymbol, error)
 	GetEodPriceBySecurityType(ctx context.Context, req entity.GetEodPriceBySecurityTypeReq) ([]entity.EodPriceBySymbol, error)
+	GetFinancialDataBySymbol(ctx context.Context, req entity.GetFinancialDataBySymbolReq) ([]entity.SetFinancialData, error)
 }
 
 func NewSetAdapter(cfg config.AppConfig, client *http.Client) SetAdapter {
@@ -51,6 +52,24 @@ func (s *setAdapter) GetEodPriceBySecurityType(ctx context.Context, req entity.G
 	fmt.Println("Fetching EOD prices by security type with URL:", url)
 	resp, err := httpclient.Get[[]entity.EodPriceBySymbol](ctx, s.client, url, &s.cfg.SetApiKey, nil)
 
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.Code != http.StatusOK {
+		return nil, err
+	}
+
+	if resp.Response == nil {
+		return nil, errors.New("no data found")
+	}
+
+	return resp.Response, nil
+}
+
+func (s *setAdapter) GetFinancialDataBySymbol(ctx context.Context, req entity.GetFinancialDataBySymbolReq) ([]entity.SetFinancialData, error) {
+	url := s.cfg.GetFinancialDataBySymbolURL + "?symbol=" + req.Symbol + "&startYear=" + req.StartYear + "&startQuarter=" + req.StartQuarter + "&endYear=" + req.EndYear + "&endQuarter=" + req.EndQuarter
+	resp, err := httpclient.Get[[]entity.SetFinancialData](ctx, s.client, url, &s.cfg.SetApiKey, nil)
 	if err != nil {
 		return nil, err
 	}
