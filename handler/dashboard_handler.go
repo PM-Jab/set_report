@@ -97,19 +97,19 @@ func (h *Handler) GenerateTargetReportWithTargetAllSymbol(c *gin.Context) {
 	c.JSON(200, resp)
 }
 
-func (h *Handler) GenerateTargetReportWithTargetAllSymbolWithLimit(c *gin.Context) {
-	ctx := c.Request.Context()
-	var body entity.GenerateTargetReportWithTargetAllSymbolWithLimitReq
-	if err := c.ShouldBindJSON(&body); err != nil {
-		c.JSON(400, gin.H{"error": "Invalid request body"})
-		return
-	}
-	fmt.Println("Starting to generate target report for all symbols with limit body:", body)
+// func (h *Handler) GenerateTargetReportWithTargetAllSymbolWithLimit(c *gin.Context) {
+// 	ctx := c.Request.Context()
+// 	var body entity.GenerateTargetReportWithTargetAllSymbolWithLimitReq
+// 	if err := c.ShouldBindJSON(&body); err != nil {
+// 		c.JSON(400, gin.H{"error": "Invalid request body"})
+// 		return
+// 	}
+// 	fmt.Println("Starting to generate target report for all symbols with limit body:", body)
 
-	resp, err := h.svc.GenerateTargetReportWithTargetAllSymbolWithLimit(ctx, body)
-	if err != nil {
-		c.JSON(500, gin.H{"error": "Failed to generate report", "details": err.Error()})
-		return
-	}
-	c.JSON(200, resp)
-}
+// 	resp, err := h.svc.GenerateTargetReportWithTargetAllSymbolWithLimit(ctx, body)
+// 	if err != nil {
+// 		c.JSON(500, gin.H{"error": "Failed to generate report", "details": err.Error()})
+// 		return
+// 	}
+// 	c.JSON(200, resp)
+// }

@@ -13,8 +13,8 @@ type Service interface {
 	SetTopGainerByDay(ctx context.Context, req entity.SetTopGainerReq) (*entity.SetTopGainerResp, error)
 	SetTopLoserByDay(ctx context.Context, req entity.SetTopLoserReq) (*entity.SetTopLoserResp, error)
 	GetAllSymbol(ctx context.Context) ([]string, error)
-	GenerateTargetReportWithTargetAllSymbol(ctx context.Context, req entity.GenerateTargetReportWithTargetAllSymbolReq) (*entity.GenerateSETReportWithTargetResp, error)
-	GenerateTargetReportWithTargetAllSymbolWithLimit(ctx context.Context, req entity.GenerateTargetReportWithTargetAllSymbolWithLimitReq) (*entity.GenerateSETReportWithTargetWithLimitResp, error)
+	GenerateTargetReportWithTargetAllSymbol(ctx context.Context, req entity.GenerateTargetReportWithTargetAllSymbolReq) (*entity.GenerateSETReportWithAllSymbolWithTargetResp, error)
+	// GenerateTargetReportWithTargetAllSymbolWithLimit(ctx context.Context, req entity.GenerateTargetReportWithTargetAllSymbolWithLimitReq) (*entity.GenerateSETReportWithTargetWithLimitResp, error)
 	ScoringStockBySymbols(ctx context.Context, req entity.ScoringStockBySymbolsReq) (entity.ScoringStockBySymbolsResp, error)
 	FindFundamentallyStrongStockFromAllSET(ctx context.Context, req entity.FindFundamentallyStrongStockFromAllSETReq) (entity.ScoringStockBySymbolsResp, error)
 }

@@ -11,66 +11,84 @@ import (
 )
 
 // GetEodPriceBySymbol implements Service.
-func (s *service) GenerateTargetReportWithTargetBySymbol(ctx context.Context, req entity.GenerateTargetReportWithTargetBySymbolReq) (*entity.GenerateSETReportWithTargetResp, error) {
+func (s *service) GenerateTargetReportWithTargetBySymbol(ctx context.Context, req entity.GenerateTargetReportWithTargetBySymbolReq) (resp *entity.GenerateSETReportWithTargetResp, err error) {
 
-	var targetReportData []entity.TargetReportData
+	var targetReportData entity.TargetReportData
+	symbol := req.Symbol
 
-	for _, symbol := range req.Symbols {
-		eodPriceReq := entity.BuildGetEodPriceBySymbolReq(symbol, req.StartDate, req.EndDate, "Y")
-		eodPrices, err := s.adapter.GetEodPriceBySymbol(ctx, eodPriceReq)
-		if err != nil {
-			fmt.Println("Error fetching EOD prices for symbol:", symbol, "Error:", err)
-			continue
+	eodPriceReq := entity.BuildGetEodPriceBySymbolReq(symbol, req.StartDate, req.EndDate, "Y")
+	eodPrices, err := s.adapter.GetEodPriceBySymbol(ctx, eodPriceReq)
+	if err != nil {
+		fmt.Println("Error fetching EOD prices for symbol:", symbol, "Error:", err)
+		return nil, fmt.Errorf("error fetching EOD prices for symbol: %s", symbol)
+	}
+
+	if len(eodPrices) == 0 {
+		return nil, fmt.Errorf("no EOD prices found for symbol: %s", symbol)
+	}
+
+	// Initialize low, high, lowDate, highDate, currentPrice
+	low := eodPrices[0].Close
+	lowDate := eodPrices[0].Date
+	high := 0.0
+	highDate := ""
+	currentPrice := eodPrices[len(eodPrices)-1].Close
+	currentDate := eodPrices[len(eodPrices)-1].Date
+
+	// Find lowest
+	indexOfLowDate := 0
+	for i, dayReport := range eodPrices {
+		if dayReport.Close < low || (low == 0 && dayReport.Close > 0) {
+			low = roundToTwoDecimals(dayReport.Close)
+			lowDate = dayReport.Date
+			indexOfLowDate = i
+		}
+	}
+	// Find highest after lowDate
+	for _, dayReport := range eodPrices[indexOfLowDate:] {
+		if dayReport.Close > high {
+			high = roundToTwoDecimals(dayReport.Close)
+			highDate = dayReport.Date
+		}
+	}
+
+	if high == 0 {
+		fmt.Println("No high price found after low date for symbol:", symbol)
+		return nil, fmt.Errorf("no high price found after low date for symbol: %s", symbol)
+	}
+
+	target := roundToTwoDecimals(((high - low) * req.TargetPercentage / 100) + low)
+	latestTargetDate := "" // Reset for next symbol
+
+	// Find the latest date after highDate where Close is below target (iterate in reverse)
+	for i := len(eodPrices) - 1; i >= 0; i-- {
+		dayReport := eodPrices[i]
+		if dayReport.Close < target {
+			latestTargetDate = dayReport.Date
+			break
 		}
 
-		if len(eodPrices) == 0 {
-			continue
+		// If we reach the highDate, stop searching
+		if dayReport.Date == highDate {
+			break
 		}
+	}
 
-		low := eodPrices[0].Low
-		high := eodPrices[0].High
-		lowDate := eodPrices[0].Date
-		highDate := eodPrices[0].Date
-		currentPrice := eodPrices[len(eodPrices)-1].Close
+	if latestTargetDate == "" {
+		fmt.Println("No date found where price is below target for symbol:", symbol)
+		latestTargetDate = "N/A"
+	}
 
-		for _, dayReport := range eodPrices {
-			if dayReport.Low < low {
-				low = roundToTwoDecimals(dayReport.Low)
-				lowDate = dayReport.Date
-			}
-			if dayReport.High > high {
-				high = roundToTwoDecimals(dayReport.High)
-				highDate = dayReport.Date
-			}
-		}
-
-		target := roundToTwoDecimals(high * req.TargetPercentage / 100)
-		latestTargetDate := "" // Reset for next symbol
-
-		// Find the latest date where Close is below target (iterate in reverse)
-		for i := len(eodPrices) - 1; i >= 0; i-- {
-			dayReport := eodPrices[i]
-			if dayReport.Close < target {
-				latestTargetDate = dayReport.Date
-				break
-			}
-		}
-
-		if latestTargetDate == "" {
-			fmt.Println("No date found where price is below target for symbol:", symbol)
-			latestTargetDate = "N/A"
-		}
-
-		targetReportData = append(targetReportData, entity.TargetReportData{
-			Symbol:           symbol,
-			Low:              low,
-			LowDate:          lowDate,
-			High:             high,
-			HighDate:         highDate,
-			Target:           target,
-			LatestTargetDate: latestTargetDate,
-			CurrentPrice:     currentPrice,
-		})
+	targetReportData = entity.TargetReportData{
+		Symbol:           symbol,
+		Low:              low,
+		LowDate:          lowDate,
+		High:             high,
+		HighDate:         highDate,
+		Target:           target,
+		LatestTargetDate: latestTargetDate,
+		CurrentPrice:     currentPrice,
+		CurrentDate:      currentDate,
 	}
 
 	return &entity.GenerateSETReportWithTargetResp{
@@ -259,7 +277,7 @@ func (s *service) GetAllSymbol(ctx context.Context) ([]string, error) {
 	return nil, nil
 }
 
-func (s *service) GenerateTargetReportWithTargetAllSymbol(ctx context.Context, req entity.GenerateTargetReportWithTargetAllSymbolReq) (*entity.GenerateSETReportWithTargetResp, error) {
+func (s *service) GenerateTargetReportWithTargetAllSymbol(ctx context.Context, req entity.GenerateTargetReportWithTargetAllSymbolReq) (*entity.GenerateSETReportWithAllSymbolWithTargetResp, error) {
 
 	symbols, err := s.GetAllSymbol(ctx)
 	if err != nil {
@@ -270,19 +288,17 @@ func (s *service) GenerateTargetReportWithTargetAllSymbol(ctx context.Context, r
 	var mutex sync.Mutex
 	var wg sync.WaitGroup
 	var reportTarget []entity.TargetReportData
+	worker := make(chan struct{}, 30) // limit to 30 concurrent goroutines
 
-	batchSize := 50
-
-	for i := 0; i < len(symbols); i += batchSize {
-		end := min(i+batchSize, len(symbols))
-		batch := symbols[i:end]
-
+	for _, symbol := range symbols {
+		worker <- struct{}{} // acquire a worker
 		wg.Add(1)
-		go func(symbolBatch []string) {
+		go func(symbol string) {
 			defer wg.Done()
+			defer func() { <-worker }() // release the worker
 
 			resp, err := s.GenerateTargetReportWithTargetBySymbol(ctx, entity.GenerateTargetReportWithTargetBySymbolReq{
-				Symbols:          symbolBatch,
+				Symbol:           symbol,
 				StartDate:        req.StartDate,
 				EndDate:          req.EndDate,
 				TargetPercentage: req.TargetPercentage,
@@ -294,11 +310,11 @@ func (s *service) GenerateTargetReportWithTargetAllSymbol(ctx context.Context, r
 
 			// Use mutex to safely append to shared slice
 			mutex.Lock()
-			reportTarget = append(reportTarget, resp.Data...)
+			reportTarget = append(reportTarget, resp.Data)
 			mutex.Unlock()
 
-			fmt.Println("Processed batch with", len(symbolBatch), "symbols")
-		}(batch)
+			fmt.Println("Processed batch with", symbol, "symbols")
+		}(symbol)
 	}
 
 	// Wait for all goroutines to complete
@@ -307,84 +323,17 @@ func (s *service) GenerateTargetReportWithTargetAllSymbol(ctx context.Context, r
 	filename := GenerateTargetCSVreport(reportTarget)
 	fmt.Println("CSV report generated:", filename)
 
-	return &entity.GenerateSETReportWithTargetResp{
+	return &entity.GenerateSETReportWithAllSymbolWithTargetResp{
 		Code:    "0000",
 		Message: "success",
 		Data:    reportTarget,
 	}, nil
 }
 
-func (s *service) GenerateTargetReportWithTargetAllSymbolWithLimit(ctx context.Context, req entity.GenerateTargetReportWithTargetAllSymbolWithLimitReq) (*entity.GenerateSETReportWithTargetWithLimitResp, error) {
-
-	symbols, err := s.GetAllSymbol(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	if req.Limit > 100 {
-		req.Limit = 100
-	}
-
-	symbols = symbols[req.Limit*(req.Page-1) : min(req.Limit*req.Page, len(symbols))]
-
-	// batch process 100 symbols at a time with proper synchronization
-	var mutex sync.Mutex
-	var wg sync.WaitGroup
-	var reportTarget []entity.TargetReportData
-
-	batchSize := 10
-
-	for i := 0; i < len(symbols); i += batchSize {
-		end := min(i+batchSize, len(symbols))
-		batch := symbols[i:end]
-
-		wg.Add(1)
-		go func(symbolBatch []string) {
-			defer wg.Done()
-
-			resp, err := s.GenerateTargetReportWithTargetBySymbol(ctx, entity.GenerateTargetReportWithTargetBySymbolReq{
-				Symbols:          symbolBatch,
-				StartDate:        req.StartDate,
-				EndDate:          req.EndDate,
-				TargetPercentage: req.TargetPercentage,
-			})
-			if err != nil {
-				fmt.Println("Error processing batch:", err)
-				return
-			}
-
-			// Use mutex to safely append to shared slice
-			mutex.Lock()
-			reportTarget = append(reportTarget, resp.Data...)
-			mutex.Unlock()
-
-			fmt.Println("Processed batch with", len(symbolBatch), "symbols")
-		}(batch)
-	}
-
-	// Wait for all goroutines to complete
-	wg.Wait()
-
-	// filename := GenerateTargetCSVreport(reportTarget)
-	// fmt.Println("CSV report generated:", filename)
-
-	return &entity.GenerateSETReportWithTargetWithLimitResp{
-		Code:    "0000",
-		Message: "success",
-		Data: entity.GenerateSETReportWithTargetWithLimitRespData{
-			TargetReport: reportTarget,
-			Page:         req.Page,
-			Limit:        req.Limit,
-			TotalPages:   0,
-			TotalItems:   0,
-		},
-	}, nil
-}
-
 func GenerateTargetCSVreport(listReportTarget []entity.TargetReportData) string {
-	csvContent := "Symbol,Low,LowDate,High,HighDate,Target,LatestTargetDate,CurrentPrice\n"
+	csvContent := "Symbol,Low,LowDate,High,HighDate,Target,LatestTargetDate,CurrentPrice,CurrentDate\n"
 	for _, report := range listReportTarget {
-		csvContent += fmt.Sprintf("%s,%.2f,%s,%.2f,%s,%.2f,%s,%.2f\n",
+		csvContent += fmt.Sprintf("%s,%.2f,%s,%.2f,%s,%.2f,%s,%.2f,%s\n",
 			report.Symbol,
 			report.Low,
 			report.LowDate,
@@ -393,6 +342,7 @@ func GenerateTargetCSVreport(listReportTarget []entity.TargetReportData) string 
 			report.Target,
 			report.LatestTargetDate,
 			report.CurrentPrice,
+			report.CurrentDate,
 		)
 	}
 
@@ -406,4 +356,49 @@ func GenerateTargetCSVreport(listReportTarget []entity.TargetReportData) string 
 	}
 	fmt.Println("CSV report generated:", filename)
 	return filename
+}
+
+func (s *service) MonthlyAverageStockPriceBySymbol(ctx context.Context, req entity.MonthlyAverageStockPriceBySymbolReq) (*entity.MonthlyAverageStockPriceBySymbolResp, error) {
+	eodPriceReq := entity.BuildGetEodPriceBySymbolReq(req.Symbol, req.StartDate, req.EndDate, "Y")
+	eodPrices, err := s.adapter.GetEodPriceBySymbol(ctx, eodPriceReq)
+	if err != nil {
+		return nil, err
+	}
+
+	// Calculate monthly average stock price
+	monthlyAvg := make(map[string]float64)
+	for _, eod := range eodPrices {
+		month := eod.Date[:7] // Get the year-month part
+		monthlyAvg[month] += eod.Close
+	}
+
+	// Prepare response
+	var monthlyStockPrices []struct {
+		Date  string  `json:"date"`
+		Price float64 `json:"price"`
+	}
+	for month, total := range monthlyAvg {
+		monthlyStockPrices = append(monthlyStockPrices, struct {
+			Date  string  `json:"date"`
+			Price float64 `json:"price"`
+		}{
+			Date:  month,
+			Price: total / float64(len(eodPrices)), // Average price
+		})
+	}
+
+	return &entity.MonthlyAverageStockPriceBySymbolResp{
+		Code:    "0000",
+		Message: "success",
+		Data: struct {
+			Symbol            string `json:"symbol"`
+			MonthlyStockPrice []struct {
+				Date  string  `json:"date"`
+				Price float64 `json:"price"`
+			} `json:"monthlyStockPrice"`
+		}{
+			Symbol:            req.Symbol,
+			MonthlyStockPrice: monthlyStockPrices,
+		},
+	}, nil
 }

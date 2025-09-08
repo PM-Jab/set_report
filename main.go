@@ -31,7 +31,7 @@ func main() {
 
 	// Define your routes here
 	router.POST("/set-report", h.GenerateTargetReportWithTargetBySymbol)
-	router.POST("/set-report/limit", h.GenerateTargetReportWithTargetAllSymbolWithLimit)
+	// router.POST("/set-report/limit", h.GenerateTargetReportWithTargetAllSymbolWithLimit)
 	router.POST("/set-report/all", h.GenerateTargetReportWithTargetAllSymbol)
 	router.POST("/set-top-gainer", h.SetTopGainer)
 	router.POST("/set-top-loser", h.SetTopLoser)

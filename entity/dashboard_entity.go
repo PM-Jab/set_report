@@ -1,10 +1,10 @@
 package entity
 
 type GenerateTargetReportWithTargetBySymbolReq struct {
-	StartDate        string   `json:"startDate"`
-	EndDate          string   `json:"endDate"`
-	Symbols          []string `json:"symbols"`
-	TargetPercentage float64  `json:"targetPercentage"` // 21.1
+	StartDate        string  `json:"startDate"`
+	EndDate          string  `json:"endDate"`
+	Symbol           string  `json:"symbol"`
+	TargetPercentage float64 `json:"targetPercentage"` // 21.1
 }
 
 type GenerateTargetReportWithTargetAllSymbolReq struct {
@@ -30,9 +30,16 @@ type TargetReportData struct {
 	Target           float64 `json:"target"`
 	LatestTargetDate string  `json:"latestTargetDate"`
 	CurrentPrice     float64 `json:"currentPrice"`
+	CurrentDate      string  `json:"currentDate"`
 }
 
 type GenerateSETReportWithTargetResp struct {
+	Code    string           `json:"code"`
+	Message string           `json:"message"`
+	Data    TargetReportData `json:"data"`
+}
+
+type GenerateSETReportWithAllSymbolWithTargetResp struct {
 	Code    string             `json:"code"`
 	Message string             `json:"message"`
 	Data    []TargetReportData `json:"data"`
@@ -90,4 +97,22 @@ type SetTopLoserResp struct {
 	Code    string              `json:"code"`
 	Message string              `json:"message"`
 	Data    SetTopLoserRespData `json:"data"`
+}
+
+type MonthlyAverageStockPriceBySymbolReq struct {
+	StartDate string `json:"startDate"`
+	EndDate   string `json:"endDate"`
+	Symbol    string `json:"symbol"`
+}
+
+type MonthlyAverageStockPriceBySymbolResp struct {
+	Code    string `json:"code"`
+	Message string `json:"message"`
+	Data    struct {
+		Symbol            string `json:"symbol"`
+		MonthlyStockPrice []struct {
+			Date  string  `json:"date"`
+			Price float64 `json:"price"`
+		} `json:"monthlyStockPrice"`
+	} `json:"data"`
 }
