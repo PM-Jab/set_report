@@ -3,7 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
-	"os"
+	"math"
 	"set-report/entity"
 	"sort"
 	"sync"
@@ -330,34 +330,6 @@ func (s *service) GenerateTargetReportWithTargetAllSymbol(ctx context.Context, r
 	}, nil
 }
 
-func GenerateTargetCSVreport(listReportTarget []entity.TargetReportData) string {
-	csvContent := "Symbol,Low,LowDate,High,HighDate,Target,LatestTargetDate,CurrentPrice,CurrentDate\n"
-	for _, report := range listReportTarget {
-		csvContent += fmt.Sprintf("%s,%.2f,%s,%.2f,%s,%.2f,%s,%.2f,%s\n",
-			report.Symbol,
-			report.Low,
-			report.LowDate,
-			report.High,
-			report.HighDate,
-			report.Target,
-			report.LatestTargetDate,
-			report.CurrentPrice,
-			report.CurrentDate,
-		)
-	}
-
-	// create file name with current timestamp
-	filename := fmt.Sprintf("target_report_%s.csv", time.Now().Format("20060102_150405"))
-	// write to file
-	err := os.WriteFile(filename, []byte(csvContent), 0644)
-	if err != nil {
-		fmt.Println("Error writing CSV file:", err)
-		return ""
-	}
-	fmt.Println("CSV report generated:", filename)
-	return filename
-}
-
 func (s *service) MonthlyAverageStockPriceBySymbol(ctx context.Context, req entity.MonthlyAverageStockPriceBySymbolReq) (*entity.MonthlyAverageStockPriceBySymbolResp, error) {
 	eodPriceReq := entity.BuildGetEodPriceBySymbolReq(req.Symbol, req.StartDate, req.EndDate, "Y")
 	eodPrices, err := s.adapter.GetEodPriceBySymbol(ctx, eodPriceReq)
@@ -365,40 +337,125 @@ func (s *service) MonthlyAverageStockPriceBySymbol(ctx context.Context, req enti
 		return nil, err
 	}
 
-	// Calculate monthly average stock price
-	monthlyAvg := make(map[string]float64)
-	for _, eod := range eodPrices {
-		month := eod.Date[:7] // Get the year-month part
-		monthlyAvg[month] += eod.Close
+	if len(eodPrices) == 0 {
+		return nil, fmt.Errorf("no EOD prices found for symbol: %s", req.Symbol)
 	}
 
-	// Prepare response
-	var monthlyStockPrices []struct {
-		Date  string  `json:"date"`
-		Price float64 `json:"price"`
+	// Calculate monthly average stock price
+	// reset every 21 days
+	monthlyTotal := make(map[int]float64)
+	var month, monthlyCount int
+	startMonthlyDate := []string{eodPrices[len(eodPrices)-1].Date}
+	for i := len(eodPrices) - 1; i >= 0; i-- {
+		eod := eodPrices[i]
+		if monthlyCount < 21 {
+			monthlyTotal[month] += eod.Close
+		} else {
+			month++
+			monthlyCount = 0
+			monthlyTotal[month] += eod.Close
+			startMonthlyDate = append(startMonthlyDate, eod.Date)
+		}
+		monthlyCount++
 	}
-	for month, total := range monthlyAvg {
-		monthlyStockPrices = append(monthlyStockPrices, struct {
-			Date  string  `json:"date"`
-			Price float64 `json:"price"`
+
+	var monthlyStockPrice []struct {
+		Date   string  `json:"date"`
+		Price  float64 `json:"price"`
+		Change float64 `json:"change"`
+	}
+
+	var totalPositive int
+
+	for i := 0; i <= month; i++ {
+		avgPrice := roundToTwoDecimals(monthlyTotal[i] / 21)
+		if math.IsNaN(avgPrice) {
+			return nil, fmt.Errorf("average price is NaN for symbol: %s", req.Symbol)
+		}
+		var change float64
+		if i > 0 {
+			change = roundToTwoDecimals((monthlyStockPrice[i-1].Price - avgPrice) * 100 / avgPrice)
+			if math.IsNaN(change) {
+				return nil, fmt.Errorf("change is NaN for symbol: %s", req.Symbol)
+			}
+
+			monthlyStockPrice[i-1].Change = change
+			if change > 0 {
+				totalPositive++
+			}
+		}
+		monthlyStockPrice = append(monthlyStockPrice, struct {
+			Date   string  `json:"date"`
+			Price  float64 `json:"price"`
+			Change float64 `json:"change"`
 		}{
-			Date:  month,
-			Price: total / float64(len(eodPrices)), // Average price
+			Date:   startMonthlyDate[i],
+			Price:  avgPrice,
+			Change: 0,
 		})
 	}
 
 	return &entity.MonthlyAverageStockPriceBySymbolResp{
 		Code:    "0000",
 		Message: "success",
-		Data: struct {
-			Symbol            string `json:"symbol"`
-			MonthlyStockPrice []struct {
-				Date  string  `json:"date"`
-				Price float64 `json:"price"`
-			} `json:"monthlyStockPrice"`
-		}{
+		Data: entity.MonthlyAverageStockPriceBySymbolData{
 			Symbol:            req.Symbol,
-			MonthlyStockPrice: monthlyStockPrices,
+			TotalPositive:     totalPositive,
+			MonthlyStockPrice: monthlyStockPrice,
 		},
+	}, nil
+}
+
+func (s *service) MonthlyAverageStockPriceAllSymbol(ctx context.Context, req entity.MonthlyAverageStockPriceAllSymbolReq) (*entity.MonthlyAverageStockPriceAllSymbolResp, error) {
+	symbols, err := s.GetAllSymbol(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	var mutex sync.Mutex
+	var wg sync.WaitGroup
+	var monthlyAvgAllSymbol []entity.MonthlyAverageStockPriceBySymbolData
+	worker := make(chan struct{}, 20) // limit to 20 concurrent goroutines
+
+	for _, symbol := range symbols {
+		worker <- struct{}{} // acquire a worker
+		wg.Add(1)
+		go func(symbol string) {
+			defer wg.Done()
+			defer func() { <-worker }() // release the worker
+
+			resp, err := s.MonthlyAverageStockPriceBySymbol(ctx, entity.MonthlyAverageStockPriceBySymbolReq{
+				Symbol:    symbol,
+				StartDate: req.StartDate,
+				EndDate:   req.EndDate,
+			})
+			if err != nil {
+				fmt.Println("Error processing batch:", err)
+				return
+			}
+
+			if len(resp.Data.MonthlyStockPrice) == 0 {
+				return
+			}
+
+			// Use mutex to safely append to shared slice
+			mutex.Lock()
+			monthlyAvgAllSymbol = append(monthlyAvgAllSymbol, resp.Data)
+			mutex.Unlock()
+
+			fmt.Println("Processed batch with", symbol, "symbols")
+		}(symbol)
+	}
+	// Wait for all goroutines to complete
+	wg.Wait()
+
+	// generate CSV report
+	filename := GenerateMonthlyAverageCSVreport(monthlyAvgAllSymbol)
+	fmt.Println("CSV report generated:", filename)
+
+	return &entity.MonthlyAverageStockPriceAllSymbolResp{
+		Code:    "0000",
+		Message: "success",
+		Data:    monthlyAvgAllSymbol,
 	}, nil
 }

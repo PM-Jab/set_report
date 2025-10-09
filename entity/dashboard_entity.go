@@ -105,14 +105,29 @@ type MonthlyAverageStockPriceBySymbolReq struct {
 	Symbol    string `json:"symbol"`
 }
 
+type MonthlyAverageStockPriceBySymbolData struct {
+	Symbol            string `json:"symbol"`
+	TotalPositive     int    `json:"totalPositive"`
+	MonthlyStockPrice []struct {
+		Date   string  `json:"date"`
+		Price  float64 `json:"price"`
+		Change float64 `json:"change"`
+	} `json:"monthlyStockPrice"`
+}
+
 type MonthlyAverageStockPriceBySymbolResp struct {
-	Code    string `json:"code"`
-	Message string `json:"message"`
-	Data    struct {
-		Symbol            string `json:"symbol"`
-		MonthlyStockPrice []struct {
-			Date  string  `json:"date"`
-			Price float64 `json:"price"`
-		} `json:"monthlyStockPrice"`
-	} `json:"data"`
+	Code    string                               `json:"code"`
+	Message string                               `json:"message"`
+	Data    MonthlyAverageStockPriceBySymbolData `json:"data"`
+}
+
+type MonthlyAverageStockPriceAllSymbolReq struct {
+	StartDate string `json:"startDate"`
+	EndDate   string `json:"endDate"`
+}
+
+type MonthlyAverageStockPriceAllSymbolResp struct {
+	Code    string                                 `json:"code"`
+	Message string                                 `json:"message"`
+	Data    []MonthlyAverageStockPriceBySymbolData `json:"data"`
 }

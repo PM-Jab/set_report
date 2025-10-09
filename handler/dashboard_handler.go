@@ -113,3 +113,35 @@ func (h *Handler) GenerateTargetReportWithTargetAllSymbol(c *gin.Context) {
 // 	}
 // 	c.JSON(200, resp)
 // }
+
+func (h *Handler) MonthlyAverageStockPriceBySymbol(c *gin.Context) {
+	ctx := c.Request.Context()
+	var body entity.MonthlyAverageStockPriceBySymbolReq
+	if err := c.ShouldBindJSON(&body); err != nil {
+		c.JSON(400, gin.H{"error": "Invalid request body"})
+		return
+	}
+	fmt.Println("Starting to get monthly average stock price with body:", body)
+	resp, err := h.svc.MonthlyAverageStockPriceBySymbol(ctx, body)
+	if err != nil {
+		c.JSON(500, gin.H{"error": "Failed to get monthly average stock price", "details": err.Error()})
+		return
+	}
+	c.JSON(200, resp)
+}
+
+func (h *Handler) MonthlyAverageStockPriceAllSymbol(c *gin.Context) {
+	ctx := c.Request.Context()
+	var body entity.MonthlyAverageStockPriceAllSymbolReq
+	if err := c.ShouldBindJSON(&body); err != nil {
+		c.JSON(400, gin.H{"error": "Invalid request body"})
+		return
+	}
+	fmt.Println("Starting to get monthly average stock price for all symbols with body:", body)
+	resp, err := h.svc.MonthlyAverageStockPriceAllSymbol(ctx, body)
+	if err != nil {
+		c.JSON(500, gin.H{"error": "Failed to get monthly average stock price for all symbols", "details": err.Error()})
+		return
+	}
+	c.JSON(200, resp)
+}

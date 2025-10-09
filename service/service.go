@@ -17,6 +17,8 @@ type Service interface {
 	// GenerateTargetReportWithTargetAllSymbolWithLimit(ctx context.Context, req entity.GenerateTargetReportWithTargetAllSymbolWithLimitReq) (*entity.GenerateSETReportWithTargetWithLimitResp, error)
 	ScoringStockBySymbols(ctx context.Context, req entity.ScoringStockBySymbolsReq) (entity.ScoringStockBySymbolsResp, error)
 	FindFundamentallyStrongStockFromAllSET(ctx context.Context, req entity.FindFundamentallyStrongStockFromAllSETReq) (entity.ScoringStockBySymbolsResp, error)
+	MonthlyAverageStockPriceBySymbol(ctx context.Context, req entity.MonthlyAverageStockPriceBySymbolReq) (*entity.MonthlyAverageStockPriceBySymbolResp, error)
+	MonthlyAverageStockPriceAllSymbol(ctx context.Context, req entity.MonthlyAverageStockPriceAllSymbolReq) (*entity.MonthlyAverageStockPriceAllSymbolResp, error)
 }
 
 func NewService(cfg config.AppConfig, client *http.Client, adapter adapter.SetAdapter) Service {

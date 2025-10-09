@@ -36,6 +36,8 @@ func main() {
 	router.POST("/set-top-gainer", h.SetTopGainer)
 	router.POST("/set-top-loser", h.SetTopLoser)
 	router.GET("/set-symbols", h.GetAllSymbol)
+	router.POST("/set-report/monthly-average", h.MonthlyAverageStockPriceBySymbol)
+	router.POST("/set-report/monthly-average/all", h.MonthlyAverageStockPriceAllSymbol)
 
 	router.POST("/financial/scoring-all", fh.FindFundamentallyStrongStockFromAllSET)
 	router.POST("/financial/scoring-by-symbols", fh.ScoringStockBySymbols)
